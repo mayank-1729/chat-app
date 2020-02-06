@@ -1,0 +1,161 @@
+<html>
+
+<head>
+    <title>Speak good or remain silent </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href="/css/bootstrap.css" rel="stylesheet">
+    <link href="/css/custom.css" rel="stylesheet">
+    <link rel="icon" href="/images/chat_logo.png" type="image/x-icon" />
+</head>
+
+<body>
+    <!-- Landing Page -->
+    <div class="container">
+        <div class="row">
+            <div class="" align="center" id="nickwarp">
+                <img src="/images/minion.jpg" height="500" width="500" class="img-circle">
+                <h3>Provide your nickname/username.</h3>
+                <p id="nicknameError"></p>
+                <div class="form-group">
+                    <form id="setNickname" role="form">
+                        <label for="nickane">Nickname: </label>
+                        <input type="text" class="form-control" id="nickname" name="nickname" placeholder="e.g Nimbus" required
+                            autofocus>
+                        <input class="btn btn-primary" type="submit" value="Submit">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Chat Application -->
+    <div id="chatWindow">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 col-sm-offset-1 panel panel-primary">
+                    <div class="panel-body">
+                        <div id="contentWrap">
+                            <div id="chatWrap"
+                                style=" border-radius: 10px;
+                                background: #F0E0B0;background: url(/images/wood.jpg);min-height: 400;max-height: 400;overflow-y: scroll;">
+                                <div id="chat">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="col-md-4 col-sm-offset-1 panel panel-primary">
+                    <div class="panel-heading">Currently Online</div>
+                    <div class="panel-body">
+                        <div id="users"></div>
+                    </div>
+                </div>
+                <h4 align="center">
+                    Invite Your Friends to the chatroom by using the <a target="_blank" href="#">link</a>
+                </h4>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-md-3 col-md-offset-1">
+                    <form id="message-box">
+                        <div class="form-group">
+                            <textarea required autofocus style="background-color:#ffffe6;border:double 4px orange;border-radius: 0.5em;"
+                            rows="3" cols="60" id="message" placeholder="Write your message and press enter.."></textarea>
+                        </div>
+                        
+                    </form>
+                </div>
+            </div>
+            <div>
+                <h3 align="center"> Use '@' to send private message to your friends.</h3>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/bootstrap.js"></script>
+
+    <script>
+        jQuery(function ($) {
+            var socket = io.connect();
+            var $messageForm = $('#message-box');
+            var $messagebox = $('#message');
+            var $chat = $('#chat');
+
+            var chatOuter = $('#chatWrap');
+            var chatInner = $('#chat');
+
+            var $users = $('#users');
+            var $nickForm = $('#setNickname');
+            var $nickError = $('#nicknameError');
+            var $nickBox = $('#nickname');
+            var title = 'anonymous';
+
+            $('#message').keydown(function(event){
+                if(event.keyCode == 13){
+                    $(this.form).submit();
+                    //$messageBox.val(' ');
+                    return false;
+                }
+            });
+
+            $nickForm.submit(function(e){
+                e.preventDefault();
+                title = $nickBox.val();
+                socket.emit('new user', $nickBox.val(), function(data){
+                    if(data){
+                        $('#nickwarp').hide();
+                        document.title = title;
+                        $('#chatWindow').show();
+                    }else{
+                        $nickError.html("Sorry, the nickname is not available.");
+                    }
+                });
+                $nickBox.val('');
+            });
+
+            socket.on('usernames', function(data){
+                var html = '<ul>';
+                for (i =0; i <data.length; i++){
+                    html += '<li><span>' + data[i]+ '</span></li>';
+                }
+                html = html + '</ul>';
+                $users.html(html);
+            });
+
+            $messageForm.submit(function(e){
+                e.preventDefault();
+                socket.emit('send message', $messagebox.val(), function(data){
+                    $chat.append("<p align='right' class='error'>" + data + "&nbsp;&nbsp;</p><br/>");
+                });
+                $messagebox.val('');
+            });
+
+            socket.on('new message', function(data){
+                if(data.nick === title){
+                    $chat.append("<p style='' align='right' class='msg'><b>" + data.nick + " : </b>" + data.msg + "&nbsp;&nbsp;</p>"); 
+                }else{
+                    $chat.append("<p style='' align='left' class='msg'><b>&nbsp;&nbsp;&nbsp;" + data.nick + " : </b>" + data.msg + "</p>");
+                }
+                scrollCorrect();
+            });
+
+            socket.on('whisper', function(data){
+                $chat.append("<p align='left' class='whisper'><b>&nbsp;&nbsp;&nbsp;" + data.nick + " : </b>" + data.msg + "</p><br/>");
+            });
+
+            socket.on('private', function(data){
+                $chat.append("<p align='right' class='whisper'><b>" + title + "@" + data.nick + ": </b>" + data.msg + "&nbsp;&nbsp;</p><br/>");
+            });
+
+            function scrollCorrect() {
+                chatOuter.scrollTop(chatInner.outerHeight());
+            }
+        });
+    </script>
+</body>
+
+</html>
